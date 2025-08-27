@@ -1,0 +1,64 @@
+dataset:
+  hf_id: beans
+  size_splits:
+    small: "train[:200]"
+    large: "train"
+    xlarge: "train+validation+test"
+    xxlarge: "train+validation+test"
+  out_dir: "data/raw"
+  export_images: true
+
+embedding:
+  model_id: "openai/clip-vit-base-patch32"
+  batch: 16
+  out_dir: "data/emb"
+  out_hf_dir: "data/emb_hf"
+
+backends:
+  faiss.flat:
+    metric: ip
+  faiss.ivfpq:
+    metric: ip
+    nlist: 32768
+    m: 64
+    nbits: 8
+    nprobe: 32
+  qdrant.hnsw:
+    metric: cosine
+    host: "localhost"
+    port: 6333
+    collection: "bench"
+    m: 16
+    ef_construct: 100
+    ef_search: 64
+  weaviate.hnsw:
+    metric: cosine         # or 'l2' / 'dot'
+    url: "http://localhost:8080"
+    collection: "bench"
+    m: 16
+    ef_construct: 100
+    ef_search: 64
+  milvus:
+    metric: cosine         # cosine | ip | l2
+    host: "localhost"
+    port: 19530
+    collection: "bench"
+    index_type: "HNSW"     # HNSW | IVF_FLAT | IVF_SQ8 | IVF_PQ
+    # HNSW params:
+    m: 16
+    ef_construct: 100
+    ef_search: 64
+    # IVF params (if index_type starts with IVF):
+    nlist: 1024
+    nprobe: 16
+    # IVF_PQ extras (optional):
+    pq_m: 8
+    nbits: 8
+
+search:
+  topk: 10
+  queries_file: "bench/queries.txt"
+
+update:
+  add_count: 50
+  delete_count: 30

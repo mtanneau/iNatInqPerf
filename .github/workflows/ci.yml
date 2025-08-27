@@ -1,0 +1,91 @@
+name: CI - VectorDB Bench (uv)
+
+on:
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+    env:
+      TOKENIZERS_PARALLELISM: "false"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      RESULTS_DIR: ".results"
+      HF_HOME: ~/.cache/huggingface
+      HF_DATASETS_CACHE: ~/.cache/huggingface/datasets
+      CUDA_VISIBLE_DEVICES: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install system libs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1 libglib2.0-0
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Cache uv & HF
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            ~/.cache/huggingface
+            .venv
+          key: ${{ runner.os }}-uv-${{ hashFiles('pyproject.toml') }}
+      - name: Sync deps
+        run: |
+          uv venv .venv
+          source .venv/bin/activate
+          uv sync
+      - name: 1) Download (small, no image export for CI)
+        run: |
+          source .venv/bin/activate
+          uv run python bench/bench.py download --size small --out_dir data/raw --no-export-images
+      - name: 2) Embeddings
+        run: |
+          source .venv/bin/activate
+          uv run python bench/bench.py embed --raw_dir data/raw --emb_dir data/emb --batch 16
+      - name: 3) Build FAISS Flat (baseline)
+        run: |
+          source .venv/bin/activate
+          uv run python bench/bench.py build --backend faiss.flat --hf_dir data/emb_hf
+      - name: 4) Build FAISS IVF+PQ (tiny params via config)
+        run: |
+          source .venv/bin/activate
+          # override config values inline if needed (keep default for speed in CI)
+          uv run python bench/bench.py build --backend faiss.ivfpq --hf_dir data/emb_hf
+      - name: 5) Build Qdrant HNSW
+        run: |
+          source .venv/bin/activate
+          uv run python bench/bench.py build --backend qdrant.hnsw --hf_dir data/emb_hf
+      - name: 6) Search (faiss.ivfpq)
+        run: |
+          source .venv/bin/activate
+          uv run python bench/bench.py search --backend faiss.ivfpq --hf_dir data/emb_hf --topk 5 --queries bench/queries.txt
+      - name: 7) Update (qdrant.hnsw)
+        run: |
+          source .venv/bin/activate
+          uv run python bench/bench.py update --backend qdrant.hnsw --hf_dir data/emb_hf
+      - name: Show results
+        if: always()
+        run: |
+          ls -lah .results || true
+      - name: Upload profiling artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: profiling-json
+          path: .results

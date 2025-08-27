@@ -1,0 +1,46 @@
+[project]
+name = "iNatInqPerf"
+version = "0.1.0"
+description = "VectorDB-agnostic benchmark: download -> embed -> index -> search -> update"
+requires-python = ">=3.8"
+readme = "README.md"
+authors = [{ name = "Your Name" }]
+
+dependencies = [
+  "numpy>=1.23,<2.0",
+  "pandas>=1.5,<2.3",
+  "tqdm>=4.66",
+  "pillow>=9.5",
+  "psutil>=5.9",
+  "datasets>=2.14,<3.0",
+  "huggingface-hub>=0.23",
+  "safetensors>=0.4",
+  "transformers>=4.35,<4.42",
+  "torch>=2.0,<2.3",
+  "torchvision>=0.15,<0.19",
+  "faiss-cpu>=1.7.4",
+  "qdrant-client>=1.7.3",
+  "weaviate-client>=3.25,<4.0",
+  "pymilvus>=2.4",
+  "pyyaml>=6.0",
+  "codetiming>=1.4",
+  "requests>=2.31",
+  "py-spy"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pyinstrument>=4.6",
+  "scalene>=1.5",
+]
+
+[tool.uv]
+# uv settings (can stay empty)
+
+[tool.scripts]
+download = "python bench/bench.py download"
+embed = "python bench/bench.py embed"
+build = "python bench/bench.py build"
+search = "python bench/bench.py search"
+update = "python bench/bench.py update"
+run-all = "python bench/bench.py run-all --size small --backend faiss.flat"
