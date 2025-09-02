@@ -181,3 +181,7 @@ class WeaviateHNSW(VectorBackend):
             self.client.schema.delete_class(self.class_name)
         except Exception:
             pass
+
+BACKENDS = {
+    "weaviate.hnsw": WeaviateHNSW
+}

@@ -239,3 +239,8 @@ class MilvusBackend(VectorBackend):
         except Exception:
             pass
         self.collection = None
+
+
+BACKENDS = {
+  "milvus": MilvusBackend,
+}
